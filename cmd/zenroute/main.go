@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"syscall"
 
+	"github.com/emrecanterzi/internal/cache"
 	"github.com/emrecanterzi/internal/config"
 	"github.com/emrecanterzi/internal/dns"
 	"github.com/emrecanterzi/internal/proxy"
@@ -28,7 +29,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	resolver := dns.NewCloudflareDoH()
+	cache := cache.NewInMemoryCache()
+	resolver := dns.NewCloudflareDoH(cache)
 	server := proxy.NewServer(proxy.Options{
 		Addr:          fmt.Sprintf("%s:%s", cfg.ProxyAddr, cfg.ProxyPort),
 		FragmentSize:  cfg.FragmentSize,

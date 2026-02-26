@@ -6,6 +6,8 @@ import (
 	"net"
 	"net/http"
 	"time"
+
+	"github.com/emrecanterzi/internal/cache"
 )
 
 type Resolver interface {
@@ -14,11 +16,13 @@ type Resolver interface {
 
 type CloudflareDoH struct {
 	client *http.Client
+	cache  cache.Cache
 }
 
-func NewCloudflareDoH() *CloudflareDoH {
+func NewCloudflareDoH(cache cache.Cache) *CloudflareDoH {
 	return &CloudflareDoH{
 		client: &http.Client{Timeout: 5 * time.Second},
+		cache:  cache,
 	}
 }
 
@@ -29,6 +33,9 @@ type doHResponse struct {
 }
 
 func (c *CloudflareDoH) Resolve(domain string) (string, error) {
+	if ip, ok := c.cache.Get(domain); ok {
+		return ip, nil
+	}
 	url := "https://cloudflare-dns.com/dns-query?name=" + domain + "&type=A"
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -54,6 +61,7 @@ func (c *CloudflareDoH) Resolve(domain string) (string, error) {
 
 	for _, answer := range result.Answer {
 		if ip := net.ParseIP(answer.Data); ip != nil && ip.To4() != nil {
+			c.cache.Set(domain, answer.Data)
 			return answer.Data, nil
 		}
 	}
