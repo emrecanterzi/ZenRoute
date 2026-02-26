@@ -15,7 +15,11 @@ import (
 )
 
 func main() {
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Printf("zenroute: config error: %v\n", err)
+		os.Exit(1)
+	}
 
 	fmt.Printf("zenroute: starting engine (os: %s)\n", runtime.GOOS)
 
@@ -25,7 +29,12 @@ func main() {
 	}
 
 	resolver := dns.NewCloudflareDoH()
-	server := proxy.NewServer(fmt.Sprintf("%s:%s", cfg.ProxyAddr, cfg.ProxyPort), resolver, cfg.FragmentSize)
+	server := proxy.NewServer(proxy.Options{
+		Addr:          fmt.Sprintf("%s:%s", cfg.ProxyAddr, cfg.ProxyPort),
+		FragmentSize:  cfg.FragmentSize,
+		BypassDomains: cfg.BypassDomains,
+		BypassAll:     cfg.BypassAll,
+	}, resolver)
 
 	sysMgr := sysproxy.NewManager(cfg.SystemServiceName)
 
@@ -34,6 +43,12 @@ func main() {
 	if err := sysMgr.SetProxy(cfg.ProxyAddr, cfg.ProxyPort); err != nil {
 		fmt.Printf("zenroute: failed to set system proxy: %v\n", err)
 		os.Exit(1)
+	}
+
+	if cfg.BypassAll {
+		fmt.Printf("zenroute: bypass all enabled\n")
+	} else {
+		fmt.Printf("zenroute: bypass domains: %v\n", len(cfg.BypassDomains))
 	}
 
 	go func() {

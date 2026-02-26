@@ -11,29 +11,34 @@ import (
 	"github.com/emrecanterzi/internal/dns"
 )
 
-type Server struct {
-	addr         string
-	resolver     dns.Resolver
-	fragmentSize int
+type Options struct {
+	Addr          string
+	FragmentSize  int
+	BypassDomains []string
+	BypassAll     bool
 }
 
-func NewServer(addr string, resolver dns.Resolver, fragmentSize int) *Server {
+type Server struct {
+	opts     Options
+	resolver dns.Resolver
+}
+
+func NewServer(opts Options, resolver dns.Resolver) *Server {
 	return &Server{
-		addr:         addr,
-		resolver:     resolver,
-		fragmentSize: fragmentSize,
+		opts:     opts,
+		resolver: resolver,
 	}
 }
 
 func (s *Server) Start(ctx context.Context) error {
 	lc := net.ListenConfig{}
-	listener, err := lc.Listen(ctx, "tcp", s.addr)
+	listener, err := lc.Listen(ctx, "tcp", s.opts.Addr)
 	if err != nil {
 		return fmt.Errorf("could not open port: %w", err)
 	}
 	defer listener.Close()
 
-	fmt.Printf("proxy: listening on %s\n", s.addr)
+	fmt.Printf("proxy: listening on %s\n", s.opts.Addr)
 
 	go func() {
 		<-ctx.Done()
@@ -75,9 +80,17 @@ func (s *Server) handleConnection(clientConn net.Conn) {
 	}
 
 	target := parts[1]
-	isDiscord := strings.Contains(target, "discord.com") || strings.Contains(target, "discord.gg")
+	shouldBypass := s.opts.BypassAll
+	if !shouldBypass {
+		for _, domain := range s.opts.BypassDomains {
+			if strings.Contains(target, domain) {
+				shouldBypass = true
+				break
+			}
+		}
+	}
 
-	if !isDiscord {
+	if !shouldBypass {
 		s.handleDirectTunnel(clientConn, target, parts[0], buffer[:data])
 		return
 	}
@@ -150,8 +163,8 @@ func (s *Server) handleSecureBypass(clientConn net.Conn, target string) {
 		tlsData := append(header, body...)
 
 		// shred ClientHello
-		for i := 0; i < len(tlsData); i += s.fragmentSize {
-			end := i + s.fragmentSize
+		for i := 0; i < len(tlsData); i += s.opts.FragmentSize {
+			end := i + s.opts.FragmentSize
 			if end > len(tlsData) {
 				end = len(tlsData)
 			}

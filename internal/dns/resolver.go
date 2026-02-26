@@ -3,6 +3,7 @@ package dns
 import (
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
 	"time"
 )
@@ -51,8 +52,11 @@ func (c *CloudflareDoH) Resolve(domain string) (string, error) {
 		return "", err
 	}
 
-	if len(result.Answer) > 0 {
-		return result.Answer[0].Data, nil
+	for _, answer := range result.Answer {
+		if ip := net.ParseIP(answer.Data); ip != nil && ip.To4() != nil {
+			return answer.Data, nil
+		}
 	}
+
 	return "", nil
 }
