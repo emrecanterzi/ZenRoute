@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -19,8 +20,24 @@ type Config struct {
 }
 
 func Load() (*Config, error) {
-	_ = godotenv.Load()
-	domainsFile := getEnv("BYPASS_DOMAINS_FILE", "./bypass-domains.txt")
+	execPath, err := os.Executable()
+	if err != nil {
+		return nil, fmt.Errorf("could not get executable path: %w", err)
+	}
+	execDir := filepath.Dir(execPath)
+
+	envFile := filepath.Join(execDir, ".env")
+	if _, err := os.Stat(envFile); os.IsNotExist(err) {
+		envFile = ".env"
+	}
+	_ = godotenv.Load(envFile)
+
+	domainsFile := filepath.Join(execDir, "bypass-domains.txt")
+	if _, err := os.Stat(domainsFile); os.IsNotExist(err) {
+		domainsFile = "./bypass-domains.txt"
+	}
+	domainsFile = getEnv("BYPASS_DOMAINS_FILE", domainsFile)
+
 	domains, err := loadBypassDomains(domainsFile)
 	if err != nil {
 		return nil, fmt.Errorf("bypass domains: %w", err)

@@ -24,11 +24,6 @@ func main() {
 
 	fmt.Printf("zenroute: starting engine (os: %s)\n", runtime.GOOS)
 
-	if runtime.GOOS != "darwin" {
-		fmt.Printf("zenroute: unsupported os: %s\n", runtime.GOOS)
-		os.Exit(1)
-	}
-
 	cache := cache.NewInMemoryCache()
 	resolver := dns.NewCloudflareDoH(cache)
 	server := proxy.NewServer(proxy.Options{
