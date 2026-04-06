@@ -11,12 +11,12 @@ import (
 )
 
 type Config struct {
-	ProxyAddr         string
 	ProxyPort         string
 	SystemServiceName string
 	FragmentSize      int
 	BypassDomains     []string
 	BypassAll         bool
+	LocalOnly         bool
 }
 
 func Load() (*Config, error) {
@@ -43,13 +43,15 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("bypass domains: %w", err)
 	}
 
+	localOnly := getEnv("LOCAL_ONLY", "false") == "true"
+
 	return &Config{
-		ProxyAddr:         getEnv("PROXY_ADDR", "127.0.0.1"),
 		ProxyPort:         getEnv("PROXY_PORT", "8080"),
 		SystemServiceName: getEnv("SYSTEM_SERVICE", "Wi-Fi"),
 		FragmentSize:      getEnvInt("FRAGMENT_SIZE", 7),
 		BypassDomains:     domains,
 		BypassAll:         getEnv("BYPASS_ALL", "false") == "true",
+		LocalOnly:         localOnly,
 	}, nil
 }
 

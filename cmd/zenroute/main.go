@@ -22,12 +22,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	listenAddr := "0.0.0.0"
+	if cfg.LocalOnly {
+		listenAddr = "127.0.0.1"
+	}
+
 	fmt.Printf("zenroute: starting engine (os: %s)\n", runtime.GOOS)
 
 	cache := cache.NewInMemoryCache()
 	resolver := dns.NewCloudflareDoH(cache)
 	server := proxy.NewServer(proxy.Options{
-		Addr:          fmt.Sprintf("%s:%s", cfg.ProxyAddr, cfg.ProxyPort),
+		Addr:          fmt.Sprintf("%s:%s", listenAddr, cfg.ProxyPort),
 		FragmentSize:  cfg.FragmentSize,
 		BypassDomains: cfg.BypassDomains,
 		BypassAll:     cfg.BypassAll,
@@ -37,7 +42,7 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	if err := sysMgr.SetProxy(cfg.ProxyAddr, cfg.ProxyPort); err != nil {
+	if err := sysMgr.SetProxy("127.0.0.1", cfg.ProxyPort); err != nil {
 		fmt.Printf("zenroute: failed to set system proxy: %v\n", err)
 		os.Exit(1)
 	}
