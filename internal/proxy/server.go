@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -21,12 +22,28 @@ type Options struct {
 type Server struct {
 	opts     Options
 	resolver dns.Resolver
+	hostname string
+	port     string
 }
 
 func NewServer(opts Options, resolver dns.Resolver) *Server {
+	hostname := "localhost"
+	localhostName, err := exec.Command("scutil", "--get", "LocalHostName").Output()
+	if err == nil {
+		hostname = strings.TrimSpace(string(localhostName))
+	}
+
+	port := "8080"
+	_, p, err := net.SplitHostPort(opts.Addr)
+	if err == nil {
+		port = p
+	}
+
 	return &Server{
 		opts:     opts,
 		resolver: resolver,
+		hostname: hostname,
+		port:     port,
 	}
 }
 
@@ -79,7 +96,14 @@ func (s *Server) handleConnection(clientConn net.Conn) {
 		return
 	}
 
+	method := parts[0]
 	target := parts[1]
+
+	if method == "GET" && strings.HasPrefix(target, "/proxy.pac") {
+		clientConn.Write([]byte("HTTP/1.1 200 OK\r\nContent-Type: application/x-ns-proxy-autoconfig\r\n\r\nfunction FindProxyForURL(url, host) {\n  return \"PROXY " + s.hostname + ".local:" + s.port + "\";\n}"))
+		return
+	}
+
 	shouldBypass := s.opts.BypassAll
 	if !shouldBypass {
 		for _, domain := range s.opts.BypassDomains {
