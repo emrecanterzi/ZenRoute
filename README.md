@@ -9,9 +9,20 @@ A minimal, local DNS/TLS proxy written in Go. Bypasses DPI firewalls and DNS poi
 - **Auto Proxy Management**: Automatically toggles system proxy on start and graceful exit.
 - **Configurable Bypass List**: Define which domains go through the bypass pipeline via `bypass-domains.txt`.
 
+## Download
+
+Pre-built binaries for macOS and Windows are available on the [releases page](https://github.com/emrecanterzi/ZenRoute/releases).
+
 ## Usage
 
-Requires Go 1.21+ and macOS or Windows.
+### Using pre-built binary
+
+Download from the [releases page](https://github.com/emrecanterzi/ZenRoute/releases), then run the binary directly.
+
+### Building from source
+
+Requires Go 1.21+.
+
 ```bash
 cp .env.example .env  # optional, defaults work fine
 make run
@@ -22,6 +33,7 @@ The system proxy will automatically bind to `localhost:8080`. Hit `Ctrl+C` to un
 ## Bypass Domains
 
 Add domains to `bypass-domains.txt`, one per line. Lines starting with `#` are comments.
+
 ```
 # messaging
 discord.com
