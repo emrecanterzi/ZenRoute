@@ -56,6 +56,7 @@ func main() {
 	go func() {
 		if err := server.Start(ctx); err != nil {
 			fmt.Printf("zenroute: proxy server err: %v\n", err)
+			sysMgr.UnsetProxy()
 			cancel()
 		}
 	}()

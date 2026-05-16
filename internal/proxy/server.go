@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os/exec"
+	"os"
 	"strings"
 	"time"
 
@@ -28,9 +28,10 @@ type Server struct {
 
 func NewServer(opts Options, resolver dns.Resolver) *Server {
 	hostname := "localhost"
-	localhostName, err := exec.Command("scutil", "--get", "LocalHostName").Output()
-	if err == nil {
-		hostname = strings.TrimSpace(string(localhostName))
+	if h, err := os.Hostname(); err != nil {
+		fmt.Printf("zenroute: could not get hostname, falling back to localhost %v\n", err)
+	} else {
+		hostname = h
 	}
 
 	port := "8080"
