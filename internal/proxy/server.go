@@ -185,15 +185,21 @@ func (s *Server) handleSecureBypass(clientConn net.Conn, target string) {
 			return
 		}
 
-		tlsData := append(header, body...)
-
 		// shred ClientHello
-		for i := 0; i < len(tlsData); i += s.opts.FragmentSize {
+		for i := 0; i < len(body); i += s.opts.FragmentSize {
 			end := i + s.opts.FragmentSize
-			if end > len(tlsData) {
-				end = len(tlsData)
+			if end > len(body) {
+				end = len(body)
 			}
-			serverConn.Write(tlsData[i:end])
+			fragment := body[i:end]
+			record := make([]byte, 5+len(fragment))
+			record[0] = 0x16
+			record[1] = header[1]
+			record[2] = header[2]
+			record[3] = byte(len(fragment) >> 8)
+			record[4] = byte(len(fragment))
+			copy(record[5:], fragment)
+			serverConn.Write(record)
 			time.Sleep(2 * time.Millisecond)
 		}
 	} else {
