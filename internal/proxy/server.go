@@ -81,12 +81,12 @@ func (s *Server) Start(ctx context.Context) error {
 func (s *Server) handleConnection(clientConn net.Conn) {
 	defer clientConn.Close()
 	buffer := make([]byte, 4096)
-	data, err := clientConn.Read(buffer)
+	n, err := clientConn.Read(buffer)
 	if err != nil {
 		return
 	}
 
-	requestString := string(buffer[:data])
+	requestString := string(buffer[:n])
 	lines := strings.Split(requestString, "\n")
 	if len(lines) == 0 {
 		return
@@ -116,7 +116,7 @@ func (s *Server) handleConnection(clientConn net.Conn) {
 	}
 
 	if !shouldBypass {
-		s.handleDirectTunnel(clientConn, target, parts[0], buffer[:data])
+		s.handleDirectTunnel(clientConn, target, parts[0], buffer[:n])
 		return
 	}
 
