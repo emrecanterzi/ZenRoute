@@ -22,7 +22,13 @@ build-mac:
 build-mac-arm:
 	GOOS=darwin GOARCH=arm64 go build -o $(BIN_DIR)/$(BINARY_NAME)-mac-arm64 ./cmd/zenroute
 
-build-all: build-windows build-mac build-mac-arm
+build-linux:
+	GOOS=linux GOARCH=amd64 go build -o $(BIN_DIR)/$(BINARY_NAME)-linux ./cmd/zenroute
+
+build-linux-arm:
+	GOOS=linux GOARCH=arm64 go build -o $(BIN_DIR)/$(BINARY_NAME)-linux-arm64 ./cmd/zenroute
+
+build-all: build-windows build-mac build-mac-arm build-linux build-linux-arm
 
 clean:
 	rm -rf $(BIN_DIR)
