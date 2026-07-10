@@ -1,6 +1,6 @@
 # zenroute
 
-A minimal, local DNS/TLS proxy written in Go. Bypasses DPI firewalls and DNS poisoning using DoH and TLS ClientHello fragmentation. Supports macOS and Windows.
+A minimal, local DNS/TLS proxy written in Go. Bypasses DPI firewalls and DNS poisoning using DoH and TLS ClientHello fragmentation. Supports macOS, Windows, and Linux (GNOME).
 
 ## Features
 
@@ -11,7 +11,7 @@ A minimal, local DNS/TLS proxy written in Go. Bypasses DPI firewalls and DNS poi
 
 ## Download
 
-Pre-built binaries for macOS and Windows are available on the [releases page](https://github.com/emrecanterzi/ZenRoute/releases).
+Pre-built binaries for macOS, Windows, and Linux are available on the [releases page](https://github.com/emrecanterzi/ZenRoute/releases).
 
 ## Usage
 
@@ -50,11 +50,13 @@ Environment variables:
 
 - `PROXY_PORT` (default: `8080`) listen port
 - `SYSTEM_SERVICE` (default: `Wi-Fi`) macOS network interface name (macOS only)
-- `FRAGMENT_SIZE` (default: `7`) TLS ClientHello chunk size in bytes
+- `FRAGMENT_SIZE` (default: `100`) TLS ClientHello chunk size in bytes
 - `BYPASS_DOMAINS_FILE` (default: `./bypass-domains.txt`) path to the domains list
 - `BYPASS_ALL` (default: `false`) bypass all domains
+- `LOCAL_ONLY` (default: `false`) bind the proxy to localhost only
 
 ## Known Limitations
 
 - Some ISPs block certain domains at the IP level rather than via DPI or DNS poisoning. In these cases, TLS fragmentation and DoH cannot help — a relay server outside the restricted region would be required.
-- Windows system proxy settings may not apply to all applications. Some apps use their own network stack and ignore OS-level proxy configuration.
+- Windows and Linux system proxy settings may not apply to all applications. Some apps use their own network stack and ignore OS-level proxy configuration.
+- Linux system proxy support targets GNOME (via `gsettings`); other desktop environments may require manual proxy configuration.
