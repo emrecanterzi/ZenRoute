@@ -48,7 +48,6 @@ Set `BYPASS_ALL=true` in your `.env` to bypass everything (sends all traffic thr
 
 Environment variables:
 
-- `PROXY_ADDR` (default: `127.0.0.1`) listen address
 - `PROXY_PORT` (default: `8080`) listen port
 - `SYSTEM_SERVICE` (default: `Wi-Fi`) macOS network interface name (macOS only)
 - `FRAGMENT_SIZE` (default: `7`) TLS ClientHello chunk size in bytes

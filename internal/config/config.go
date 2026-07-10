@@ -48,7 +48,7 @@ func Load() (*Config, error) {
 	return &Config{
 		ProxyPort:         getEnv("PROXY_PORT", "8080"),
 		SystemServiceName: getEnv("SYSTEM_SERVICE", "Wi-Fi"),
-		FragmentSize:      getEnvInt("FRAGMENT_SIZE", 7),
+		FragmentSize:      getEnvInt("FRAGMENT_SIZE", 100),
 		BypassDomains:     domains,
 		BypassAll:         getEnv("BYPASS_ALL", "false") == "true" || len(domains) == 0,
 		LocalOnly:         localOnly,
