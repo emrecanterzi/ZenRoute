@@ -16,6 +16,13 @@ import (
 )
 
 func main() {
+	os.Unsetenv("http_proxy")
+	os.Unsetenv("https_proxy")
+	os.Unsetenv("HTTP_PROXY")
+	os.Unsetenv("HTTPS_PROXY")
+	os.Unsetenv("NO_PROXY")
+	os.Unsetenv("no_proxy")
+
 	cfg, err := config.Load()
 	if err != nil {
 		fmt.Printf("zenroute: config error: %v\n", err)
