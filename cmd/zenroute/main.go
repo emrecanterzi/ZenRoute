@@ -60,19 +60,27 @@ func main() {
 		fmt.Printf("zenroute: bypass domains: %v\n", len(cfg.BypassDomains))
 	}
 
+	errCh := make(chan error, 1)
+
 	go func() {
 		if err := server.Start(ctx); err != nil {
-			fmt.Printf("zenroute: proxy server err: %v\n", err)
-			sysMgr.UnsetProxy()
-			cancel()
+			errCh <- err
 		}
 	}()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-	<-stop
 
-	fmt.Println("zenroute: stopping...")
+	select {
+	case <-stop:
+		fmt.Println("zenroute: stopping...")
+	case err := <-errCh:
+		fmt.Printf("zenroute: proxy server err: %v\n", err)
+		cancel()
+		sysMgr.UnsetProxy()
+		os.Exit(1)
+	}
+
 	cancel()
 	sysMgr.UnsetProxy()
 	fmt.Println("zenroute: exited")
