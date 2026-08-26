@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/emrecanterzi/zenroute/internal/util"
 	"github.com/joho/godotenv"
 )
 
@@ -73,7 +74,7 @@ func loadBypassDomains(path string) ([]string, error) {
 		if d == "" || strings.HasPrefix(d, "#") {
 			continue
 		}
-		domains = append(domains, d)
+		domains = append(domains, util.NormalizeDomain(d))
 	}
 	return domains, nil
 }

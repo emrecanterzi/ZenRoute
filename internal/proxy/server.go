@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/emrecanterzi/zenroute/internal/dns"
+	"github.com/emrecanterzi/zenroute/internal/util"
 )
 
 type Options struct {
@@ -105,15 +106,7 @@ func (s *Server) handleConnection(clientConn net.Conn) {
 		return
 	}
 
-	shouldBypass := s.opts.BypassAll
-	if !shouldBypass {
-		for _, domain := range s.opts.BypassDomains {
-			if strings.Contains(target, domain) {
-				shouldBypass = true
-				break
-			}
-		}
-	}
+	shouldBypass := s.shouldBypass(method, target)
 
 	if !shouldBypass {
 		s.handleDirectTunnel(clientConn, target, parts[0], buffer[:n])
@@ -145,7 +138,7 @@ func (s *Server) handleSecureBypass(clientConn net.Conn, target string) {
 	port := "443"
 
 	if host, p, err := net.SplitHostPort(target); err == nil {
-		domain = host
+		domain = util.NormalizeDomain(host)
 		port = p
 	}
 
@@ -226,4 +219,31 @@ func (s *Server) bidirectionalCopy(clientConn, serverConn net.Conn) {
 
 	clientConn.Close()
 	serverConn.Close()
+}
+
+func (s *Server) shouldBypass(method, target string) bool {
+	if method != "CONNECT" {
+		return false
+	}
+
+	host, _, err := net.SplitHostPort(target)
+	if err != nil {
+		return false
+	}
+
+	host = util.NormalizeDomain(host)
+
+	if s.opts.BypassAll {
+		return true
+	}
+
+	for _, domain := range s.opts.BypassDomains {
+		domain = util.NormalizeDomain(domain)
+
+		if host == domain || strings.HasSuffix(host, "."+domain) {
+			return true
+		}
+	}
+
+	return false
 }
