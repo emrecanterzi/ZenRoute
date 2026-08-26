@@ -238,8 +238,6 @@ func (s *Server) shouldBypass(method, target string) bool {
 	}
 
 	for _, domain := range s.opts.BypassDomains {
-		domain = util.NormalizeDomain(domain)
-
 		if host == domain || strings.HasSuffix(host, "."+domain) {
 			return true
 		}
