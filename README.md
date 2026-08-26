@@ -53,7 +53,7 @@ Environment variables:
 - `FRAGMENT_SIZE` (default: `100`) TLS ClientHello chunk size in bytes
 - `BYPASS_DOMAINS_FILE` (default: `./bypass-domains.txt`) path to the domains list
 - `BYPASS_ALL` (default: `false`) bypass all domains
-- `LOCAL_ONLY` (default: `false`) bind the proxy to localhost only
+- `LOCAL_ONLY` (default: `true`) bind the proxy to localhost only
 
 ## Known Limitations
 

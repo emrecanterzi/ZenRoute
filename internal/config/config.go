@@ -43,12 +43,18 @@ func Load() (*Config, error) {
 		fmt.Printf("zenroute: failed to load bypass domains: %v\n", err)
 	}
 
-	localOnly := getEnv("LOCAL_ONLY", "false") == "true"
+	localOnly := getEnv("LOCAL_ONLY", "true") == "true"
+
+	fragmentSize := getEnvInt("FRAGMENT_SIZE", 100)
+
+	if fragmentSize <= 0 || fragmentSize > 1000 {
+		return nil, fmt.Errorf("invalid FRAGMENT_SIZE: %d (must be between 1 and 1000)", fragmentSize)
+	}
 
 	return &Config{
 		ProxyPort:         getEnv("PROXY_PORT", "8080"),
 		SystemServiceName: getEnv("SYSTEM_SERVICE", "Wi-Fi"),
-		FragmentSize:      getEnvInt("FRAGMENT_SIZE", 100),
+		FragmentSize:      fragmentSize,
 		BypassDomains:     domains,
 		BypassAll:         getEnv("BYPASS_ALL", "false") == "true" || len(domains) == 0,
 		LocalOnly:         localOnly,
