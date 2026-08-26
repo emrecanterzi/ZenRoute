@@ -60,3 +60,4 @@ Environment variables:
 - Some ISPs block certain domains at the IP level rather than via DPI or DNS poisoning. In these cases, TLS fragmentation and DoH cannot help — a relay server outside the restricted region would be required.
 - Windows and Linux system proxy settings may not apply to all applications. Some apps use their own network stack and ignore OS-level proxy configuration.
 - Linux system proxy support targets GNOME (via `gsettings`); other desktop environments may require manual proxy configuration.
+- Dead or unreachable peers are detected via TCP keepalive rather than a hard idle timeout. Detection takes roughly the keepalive interval (~30s+), not immediately, and a connection that's alive but simply quiet is never force-closed.

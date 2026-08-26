@@ -118,7 +118,7 @@ func (s *Server) handleConnection(clientConn net.Conn) {
 
 func (s *Server) handleDirectTunnel(clientConn net.Conn, target, method string, initialData []byte) {
 	fmt.Printf("proxy: direct -> %s\n", target)
-	serverConn, err := net.Dial("tcp", target)
+	serverConn, err := net.DialTimeout("tcp", target, 10*time.Second)
 	if err != nil {
 		return
 	}
@@ -149,7 +149,7 @@ func (s *Server) handleSecureBypass(clientConn net.Conn, target string) {
 	}
 
 	fmt.Printf("proxy: bypass -> %s (%s)\n", domain, realIP)
-	serverConn, err := net.Dial("tcp", realIP+":"+port)
+	serverConn, err := net.DialTimeout("tcp", realIP+":"+port, 10*time.Second)
 	if err != nil {
 		return
 	}
@@ -163,6 +163,7 @@ func (s *Server) handleSecureBypass(clientConn net.Conn, target string) {
 
 	// read TLS record header
 	header := make([]byte, 5)
+	clientConn.SetReadDeadline(time.Now().Add(5 * time.Second))
 	_, err = io.ReadFull(clientConn, header)
 	if err != nil {
 		return
@@ -198,12 +199,19 @@ func (s *Server) handleSecureBypass(clientConn net.Conn, target string) {
 	} else {
 		serverConn.Write(header)
 	}
-
+	clientConn.SetReadDeadline(time.Time{})
 	s.bidirectionalCopy(clientConn, serverConn)
 }
 
 func (s *Server) bidirectionalCopy(clientConn, serverConn net.Conn) {
 	errChan := make(chan error, 2)
+
+	for _, c := range []net.Conn{clientConn, serverConn} {
+		if tcpConn, ok := c.(*net.TCPConn); ok {
+			tcpConn.SetKeepAlive(true)
+			tcpConn.SetKeepAlivePeriod(30 * time.Second)
+		}
+	}
 
 	go func() {
 		_, err := io.Copy(serverConn, clientConn)
