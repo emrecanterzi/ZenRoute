@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/emrecanterzi/internal/cache"
+	"github.com/emrecanterzi/zenroute/internal/cache"
 )
 
 type Resolver interface {

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/emrecanterzi/internal/dns"
+	"github.com/emrecanterzi/zenroute/internal/dns"
 )
 
 type Options struct {

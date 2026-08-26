@@ -8,11 +8,11 @@ import (
 	"runtime"
 	"syscall"
 
-	"github.com/emrecanterzi/internal/cache"
-	"github.com/emrecanterzi/internal/config"
-	"github.com/emrecanterzi/internal/dns"
-	"github.com/emrecanterzi/internal/proxy"
-	"github.com/emrecanterzi/internal/sysproxy"
+	"github.com/emrecanterzi/zenroute/internal/cache"
+	"github.com/emrecanterzi/zenroute/internal/config"
+	"github.com/emrecanterzi/zenroute/internal/dns"
+	"github.com/emrecanterzi/zenroute/internal/proxy"
+	"github.com/emrecanterzi/zenroute/internal/sysproxy"
 )
 
 func main() {

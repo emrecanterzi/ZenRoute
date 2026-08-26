@@ -21,7 +21,7 @@ Download from the [releases page](https://github.com/emrecanterzi/ZenRoute/relea
 
 ### Building from source
 
-Requires Go 1.21+.
+Requires Go 1.25.5
 
 ```bash
 cp .env.example .env  # optional, defaults work fine
