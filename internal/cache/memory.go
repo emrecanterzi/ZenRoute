@@ -1,29 +1,42 @@
 package cache
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
+
+type entry struct {
+	ip        string
+	expiresAt time.Time
+}
 
 type InMemoryCache struct {
-	cache map[string]string
+	cache map[string]entry
 	mu    sync.RWMutex
 }
 
 func NewInMemoryCache() *InMemoryCache {
 	return &InMemoryCache{
-		cache: make(map[string]string),
+		cache: make(map[string]entry),
 	}
 }
 
-func (c *InMemoryCache) Set(domain string, ip string) {
+func (c *InMemoryCache) Set(domain, ip string, ttl time.Duration) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.cache[domain] = ip
+	c.cache[domain] = entry{ip: ip, expiresAt: time.Now().Add(ttl)}
 }
 
 func (c *InMemoryCache) Get(domain string) (string, bool) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	if ip, ok := c.cache[domain]; ok {
-		return ip, true
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	e, ok := c.cache[domain]
+	if !ok {
+		return "", false
 	}
-	return "", false
+	if time.Now().After(e.expiresAt) {
+		delete(c.cache, domain)
+		return "", false
+	}
+	return e.ip, true
 }

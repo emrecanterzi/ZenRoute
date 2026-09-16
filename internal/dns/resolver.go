@@ -29,6 +29,7 @@ func NewCloudflareDoH(cache cache.Cache) *CloudflareDoH {
 type doHResponse struct {
 	Answer []struct {
 		Data string `json:"data"`
+		TTL  int    `json:"TTL"`
 	} `json:"Answer"`
 }
 
@@ -61,7 +62,8 @@ func (c *CloudflareDoH) Resolve(domain string) (string, error) {
 
 	for _, answer := range result.Answer {
 		if ip := net.ParseIP(answer.Data); ip != nil && ip.To4() != nil {
-			c.cache.Set(domain, answer.Data)
+			ttl := time.Duration(answer.TTL) * time.Second
+			c.cache.Set(domain, answer.Data, ttl)
 			return answer.Data, nil
 		}
 	}
