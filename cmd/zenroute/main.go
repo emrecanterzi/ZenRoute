@@ -40,7 +40,6 @@ func main() {
 	resolver := dns.NewCloudflareDoH(cache)
 	server := proxy.NewServer(proxy.Options{
 		Addr:          fmt.Sprintf("%s:%s", listenAddr, cfg.ProxyPort),
-		FragmentSize:  cfg.FragmentSize,
 		BypassDomains: cfg.BypassDomains,
 		BypassAll:     cfg.BypassAll,
 	}, resolver)

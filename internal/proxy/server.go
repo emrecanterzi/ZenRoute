@@ -15,7 +15,6 @@ import (
 
 type Options struct {
 	Addr          string
-	FragmentSize  int
 	BypassDomains []string
 	BypassAll     bool
 }
@@ -148,7 +147,6 @@ func (s *Server) handleSecureBypass(clientConn net.Conn, target string) {
 		return
 	}
 
-	fmt.Printf("proxy: bypass -> %s (%s)\n", domain, realIP)
 	serverConn, err := net.DialTimeout("tcp", realIP+":"+port, 10*time.Second)
 	if err != nil {
 		return
@@ -161,7 +159,6 @@ func (s *Server) handleSecureBypass(clientConn net.Conn, target string) {
 
 	clientConn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
 
-	// read TLS record header
 	header := make([]byte, 5)
 	clientConn.SetReadDeadline(time.Now().Add(5 * time.Second))
 	_, err = io.ReadFull(clientConn, header)
@@ -169,34 +166,35 @@ func (s *Server) handleSecureBypass(clientConn net.Conn, target string) {
 		return
 	}
 
-	// 0x16 == TLS Handshake
 	if header[0] == 0x16 {
 		length := int(header[3])<<8 | int(header[4])
-
 		body := make([]byte, length)
 		_, err = io.ReadFull(clientConn, body)
 		if err != nil {
 			return
 		}
 
-		// shred ClientHello
-		for i := 0; i < len(body); i += s.opts.FragmentSize {
-			end := i + s.opts.FragmentSize
-			if end > len(body) {
-				end = len(body)
-			}
-			fragment := body[i:end]
-			record := make([]byte, 5+len(fragment))
+		sniStart, sniLen, err := s.findSNIRange(body)
+		if err != nil {
+			fmt.Printf("proxy: sni parse failed for %s: %v\n", domain, err)
+			return
+		}
+
+		fmt.Printf("proxy: fragmented -> %s (%s)\n", domain, realIP)
+
+		splitAt := sniStart + sniLen/2
+		for _, chunk := range [][]byte{body[:splitAt], body[splitAt:]} {
+			record := make([]byte, 5+len(chunk))
 			record[0] = 0x16
-			record[1] = header[1]
-			record[2] = header[2]
-			record[3] = byte(len(fragment) >> 8)
-			record[4] = byte(len(fragment))
-			copy(record[5:], fragment)
+			record[1], record[2] = header[1], header[2]
+			record[3] = byte(len(chunk) >> 8)
+			record[4] = byte(len(chunk))
+			copy(record[5:], chunk)
 			serverConn.Write(record)
 			time.Sleep(2 * time.Millisecond)
 		}
 	} else {
+		fmt.Printf("proxy: raw passthrough (not TLS handshake) -> %s (%s)\n", domain, realIP)
 		serverConn.Write(header)
 	}
 	clientConn.SetReadDeadline(time.Time{})
@@ -252,4 +250,61 @@ func (s *Server) shouldBypass(method, target string) bool {
 	}
 
 	return false
+}
+
+func (s *Server) findSNIRange(body []byte) (start, length int, err error) {
+	pos := 4 + 2 + 32
+
+	if pos+1 > len(body) {
+		return 0, 0, fmt.Errorf("truncated before session id")
+	}
+	pos += 1 + int(body[pos])
+
+	if pos+2 > len(body) {
+		return 0, 0, fmt.Errorf("truncated before cipher suites")
+	}
+
+	csLen := int(body[pos])<<8 | int(body[pos+1])
+	pos += 2 + csLen
+
+	if pos+1 > len(body) {
+		return 0, 0, fmt.Errorf("truncated before compression methods")
+	}
+
+	pos += 1 + int(body[pos])
+
+	if pos+2 > len(body) {
+		return 0, 0, fmt.Errorf("no extensions")
+	}
+
+	extsLen := int(body[pos])<<8 | int(body[pos+1])
+	pos += 2
+	extsEnd := pos + extsLen
+	if extsEnd > len(body) {
+		return 0, 0, fmt.Errorf("extensions length overruns body")
+	}
+
+	for pos+4 <= extsEnd {
+		extType := int(body[pos])<<8 | int(body[pos+1])
+		extLen := int(body[pos+2])<<8 | int(body[pos+3])
+		dataStart := pos + 4
+
+		if extType == 0x0000 {
+			if extLen < 5 || dataStart+extLen > len(body) {
+				return 0, 0, fmt.Errorf("malformed sni extension")
+			}
+			if body[dataStart+2] != 0x00 {
+				return 0, 0, fmt.Errorf("unsupported sni name type")
+			}
+			nameLen := int(body[dataStart+3])<<8 | int(body[dataStart+4])
+			nameStart := dataStart + 5
+			if nameStart+nameLen > len(body) {
+				return 0, 0, fmt.Errorf("sni name overruns body")
+			}
+			return nameStart, nameLen, nil
+		}
+		pos = dataStart + extLen
+	}
+
+	return 0, 0, fmt.Errorf("sni extension not found")
 }

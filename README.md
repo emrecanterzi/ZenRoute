@@ -5,7 +5,7 @@ A minimal, local DNS/TLS proxy written in Go. Bypasses DPI firewalls and DNS poi
 ## Features
 
 - **DoH Resolution**: Uses Cloudflare DoH to bypass poisoned local DNS.
-- **TLS Fragmentation**: Splits the initial TLS ClientHello into configurable chunks to bypass DPI.
+- **TLS Fragmentation**: Splits the initial TLS ClientHello at the SNI boundary to bypass DPI.
 - **Auto Proxy Management**: Automatically toggles system proxy on start and graceful exit.
 - **Configurable Bypass List**: Define which domains go through the bypass pipeline via `bypass-domains.txt`.
 
@@ -50,7 +50,6 @@ Environment variables:
 
 - `PROXY_PORT` (default: `8080`) listen port
 - `SYSTEM_SERVICE` (default: `Wi-Fi`) macOS network interface name (macOS only)
-- `FRAGMENT_SIZE` (default: `100`) TLS ClientHello chunk size in bytes
 - `BYPASS_DOMAINS_FILE` (default: `./bypass-domains.txt`) path to the domains list
 - `BYPASS_ALL` (default: `false`) bypass all domains
 - `LOCAL_ONLY` (default: `true`) bind the proxy to localhost only

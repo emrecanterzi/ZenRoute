@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/emrecanterzi/zenroute/internal/util"
@@ -14,7 +13,6 @@ import (
 type Config struct {
 	ProxyPort         string
 	SystemServiceName string
-	FragmentSize      int
 	BypassDomains     []string
 	BypassAll         bool
 	LocalOnly         bool
@@ -46,16 +44,9 @@ func Load() (*Config, error) {
 
 	localOnly := getEnv("LOCAL_ONLY", "true") == "true"
 
-	fragmentSize := getEnvInt("FRAGMENT_SIZE", 100)
-
-	if fragmentSize <= 0 || fragmentSize > 1000 {
-		return nil, fmt.Errorf("invalid FRAGMENT_SIZE: %d (must be between 1 and 1000)", fragmentSize)
-	}
-
 	return &Config{
 		ProxyPort:         getEnv("PROXY_PORT", "8080"),
 		SystemServiceName: getEnv("SYSTEM_SERVICE", "Wi-Fi"),
-		FragmentSize:      fragmentSize,
 		BypassDomains:     domains,
 		BypassAll:         getEnv("BYPASS_ALL", "false") == "true" || len(domains) == 0,
 		LocalOnly:         localOnly,
@@ -82,17 +73,6 @@ func loadBypassDomains(path string) ([]string, error) {
 func getEnv(key, fallback string) string {
 	if value, ok := os.LookupEnv(key); ok {
 		return value
-	}
-	return fallback
-}
-
-func getEnvInt(key string, fallback int) int {
-	if value, ok := os.LookupEnv(key); ok {
-		i, err := strconv.Atoi(value)
-		if err != nil {
-			return fallback
-		}
-		return i
 	}
 	return fallback
 }
