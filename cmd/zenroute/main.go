@@ -42,6 +42,7 @@ func main() {
 		Addr:          fmt.Sprintf("%s:%s", listenAddr, cfg.ProxyPort),
 		BypassDomains: cfg.BypassDomains,
 		BypassAll:     cfg.BypassAll,
+		MaxConns:      cfg.MaxConns,
 	}, resolver)
 
 	sysMgr := sysproxy.NewManager(cfg.SystemServiceName)

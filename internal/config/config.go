@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/emrecanterzi/zenroute/internal/util"
@@ -16,6 +17,7 @@ type Config struct {
 	BypassDomains     []string
 	BypassAll         bool
 	LocalOnly         bool
+	MaxConns          int
 }
 
 func Load() (*Config, error) {
@@ -50,6 +52,7 @@ func Load() (*Config, error) {
 		BypassDomains:     domains,
 		BypassAll:         getEnv("BYPASS_ALL", "false") == "true" || len(domains) == 0,
 		LocalOnly:         localOnly,
+		MaxConns:          getEnvInt("MAX_CONNS", 1024, 1, 65535),
 	}, nil
 }
 
@@ -73,6 +76,23 @@ func loadBypassDomains(path string) ([]string, error) {
 func getEnv(key, fallback string) string {
 	if value, ok := os.LookupEnv(key); ok {
 		return value
+	}
+	return fallback
+}
+
+func getEnvInt(key string, fallback, min, max int) int {
+	if value, ok := os.LookupEnv(key); ok {
+		if i, err := strconv.Atoi(value); err == nil {
+			if i > max {
+				fmt.Printf("zenroute: %s=%d above maximum, clamped to %d\n", key, i, max)
+				return max
+			}
+			if i < min {
+				fmt.Printf("zenroute: %s=%d below minimum, clamped to %d\n", key, i, min)
+				return min
+			}
+			return i
+		}
 	}
 	return fallback
 }

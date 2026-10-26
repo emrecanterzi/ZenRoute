@@ -17,6 +17,7 @@ type Options struct {
 	Addr          string
 	BypassDomains []string
 	BypassAll     bool
+	MaxConns      int
 }
 
 type Server struct {
@@ -63,6 +64,8 @@ func (s *Server) Start(ctx context.Context) error {
 		listener.Close()
 	}()
 
+	sem := make(chan struct{}, s.opts.MaxConns)
+
 	for {
 		clientConn, err := listener.Accept()
 		if err != nil {
@@ -74,17 +77,28 @@ func (s *Server) Start(ctx context.Context) error {
 				continue
 			}
 		}
-		go s.handleConnection(clientConn)
+		select {
+		case sem <- struct{}{}:
+		case <-ctx.Done():
+			clientConn.Close()
+			return nil
+		}
+		go func() {
+			defer func() { <-sem }()
+			s.handleConnection(clientConn)
+		}()
 	}
 }
 
 func (s *Server) handleConnection(clientConn net.Conn) {
 	defer clientConn.Close()
 	buffer := make([]byte, 4096)
+	clientConn.SetReadDeadline(time.Now().Add(time.Second * 5))
 	n, err := clientConn.Read(buffer)
 	if err != nil {
 		return
 	}
+	clientConn.SetReadDeadline(time.Time{})
 
 	requestString := string(buffer[:n])
 	lines := strings.Split(requestString, "\n")
