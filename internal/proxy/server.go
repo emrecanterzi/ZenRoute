@@ -28,9 +28,9 @@ type Server struct {
 }
 
 func NewServer(opts Options, resolver dns.Resolver) *Server {
-	hostname := "localhost"
+	hostname := ""
 	if h, err := os.Hostname(); err != nil {
-		fmt.Printf("zenroute: could not get hostname, falling back to localhost %v\n", err)
+		fmt.Printf("zenroute: could not get hostname, /proxy.pac will be unavailable: %v\n", err)
 	} else {
 		hostname = h
 	}
@@ -115,7 +115,11 @@ func (s *Server) handleConnection(clientConn net.Conn) {
 	target := parts[1]
 
 	if method == "GET" && strings.HasPrefix(target, "/proxy.pac") {
-		clientConn.Write([]byte("HTTP/1.1 200 OK\r\nContent-Type: application/x-ns-proxy-autoconfig\r\n\r\nfunction FindProxyForURL(url, host) {\n  return \"PROXY " + s.hostname + ".local:" + s.port + "\";\n}"))
+		if s.hostname == "" {
+			clientConn.Write([]byte("HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\n\r\n"))
+			return
+		}
+		clientConn.Write([]byte("HTTP/1.1 200 OK\r\nContent-Type: application/x-ns-proxy-autoconfig\r\n\r\nfunction FindProxyForURL(url, host) {\n  return \"PROXY " + s.hostname + ":" + s.port + "; DIRECT\";\n}"))
 		return
 	}
 
