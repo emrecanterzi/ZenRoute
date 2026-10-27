@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -135,7 +136,20 @@ func (s *Server) handleConnection(clientConn net.Conn) {
 
 func (s *Server) handleDirectTunnel(clientConn net.Conn, target, method string, initialData []byte) {
 	fmt.Printf("proxy: direct -> %s\n", target)
-	serverConn, err := net.DialTimeout("tcp", target, 10*time.Second)
+
+	dialAddr := target
+	if method != "CONNECT" {
+		u, err := url.Parse(target)
+		if err != nil || u.Host == "" {
+			return
+		}
+		dialAddr = u.Host
+		if u.Port() == "" {
+			dialAddr = net.JoinHostPort(u.Hostname(), "80")
+		}
+	}
+
+	serverConn, err := net.DialTimeout("tcp", dialAddr, 10*time.Second)
 	if err != nil {
 		return
 	}
