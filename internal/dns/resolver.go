@@ -10,6 +10,8 @@ import (
 	"github.com/emrecanterzi/zenroute/internal/cache"
 )
 
+const minTTL = 30 * time.Second
+
 type Resolver interface {
 	Resolve(domain string) (string, error)
 }
@@ -62,7 +64,7 @@ func (c *CloudflareDoH) Resolve(domain string) (string, error) {
 
 	for _, answer := range result.Answer {
 		if ip := net.ParseIP(answer.Data); ip != nil && ip.To4() != nil {
-			ttl := time.Duration(answer.TTL) * time.Second
+			ttl := max(time.Duration(answer.TTL)*time.Second, minTTL)
 			c.cache.Set(domain, answer.Data, ttl)
 			return answer.Data, nil
 		}
