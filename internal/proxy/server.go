@@ -1,11 +1,12 @@
 package proxy
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
 	"net"
-	"net/url"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -93,27 +94,16 @@ func (s *Server) Start(ctx context.Context) error {
 
 func (s *Server) handleConnection(clientConn net.Conn) {
 	defer clientConn.Close()
-	buffer := make([]byte, 4096)
-	clientConn.SetReadDeadline(time.Now().Add(time.Second * 5))
-	n, err := clientConn.Read(buffer)
+	clientConn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	br := bufio.NewReader(clientConn)
+	req, err := http.ReadRequest(br)
 	if err != nil {
 		return
 	}
 	clientConn.SetReadDeadline(time.Time{})
 
-	requestString := string(buffer[:n])
-	lines := strings.Split(requestString, "\n")
-	if len(lines) == 0 {
-		return
-	}
-
-	parts := strings.Split(lines[0], " ")
-	if len(parts) < 2 {
-		return
-	}
-
-	method := parts[0]
-	target := parts[1]
+	method := req.Method
+	target := req.RequestURI
 
 	if method == "GET" && strings.HasPrefix(target, "/proxy.pac") {
 		if s.hostname == "" {
@@ -124,28 +114,25 @@ func (s *Server) handleConnection(clientConn net.Conn) {
 		return
 	}
 
-	shouldBypass := s.shouldBypass(method, target)
-
-	if !shouldBypass {
-		s.handleDirectTunnel(clientConn, target, parts[0], buffer[:n])
+	if !s.shouldBypass(method, target) {
+		s.handleDirectTunnel(clientConn, br, req)
 		return
 	}
 
-	s.handleSecureBypass(clientConn, target)
+	s.handleSecureBypass(clientConn, br, target)
 }
 
-func (s *Server) handleDirectTunnel(clientConn net.Conn, target, method string, initialData []byte) {
-	fmt.Printf("proxy: direct -> %s\n", target)
+func (s *Server) handleDirectTunnel(clientConn net.Conn, br *bufio.Reader, req *http.Request) {
+	fmt.Printf("proxy: direct -> %s\n", req.RequestURI)
 
-	dialAddr := target
-	if method != "CONNECT" {
-		u, err := url.Parse(target)
-		if err != nil || u.Host == "" {
+	dialAddr := req.RequestURI
+	if req.Method != "CONNECT" {
+		if req.URL.Host == "" {
 			return
 		}
-		dialAddr = u.Host
-		if u.Port() == "" {
-			dialAddr = net.JoinHostPort(u.Hostname(), "80")
+		dialAddr = req.URL.Host
+		if req.URL.Port() == "" {
+			dialAddr = net.JoinHostPort(req.URL.Hostname(), "80")
 		}
 	}
 
@@ -155,16 +142,20 @@ func (s *Server) handleDirectTunnel(clientConn net.Conn, target, method string, 
 	}
 	defer serverConn.Close()
 
-	if method == "CONNECT" {
+	if req.Method == "CONNECT" {
 		clientConn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
 	} else {
-		serverConn.Write(initialData)
+		req.Header.Del("Proxy-Connection")
+		req.Close = true
+		if err := req.Write(serverConn); err != nil {
+			return
+		}
 	}
 
-	s.bidirectionalCopy(clientConn, serverConn)
+	s.bidirectionalCopy(clientConn, br, serverConn)
 }
 
-func (s *Server) handleSecureBypass(clientConn net.Conn, target string) {
+func (s *Server) handleSecureBypass(clientConn net.Conn, br *bufio.Reader, target string) {
 	domain := target
 	port := "443"
 
@@ -193,7 +184,7 @@ func (s *Server) handleSecureBypass(clientConn net.Conn, target string) {
 
 	header := make([]byte, 5)
 	clientConn.SetReadDeadline(time.Now().Add(5 * time.Second))
-	_, err = io.ReadFull(clientConn, header)
+	_, err = io.ReadFull(br, header)
 	if err != nil {
 		return
 	}
@@ -201,7 +192,7 @@ func (s *Server) handleSecureBypass(clientConn net.Conn, target string) {
 	if header[0] == 0x16 {
 		length := int(header[3])<<8 | int(header[4])
 		body := make([]byte, length)
-		_, err = io.ReadFull(clientConn, body)
+		_, err = io.ReadFull(br, body)
 		if err != nil {
 			return
 		}
@@ -230,10 +221,10 @@ func (s *Server) handleSecureBypass(clientConn net.Conn, target string) {
 		serverConn.Write(header)
 	}
 	clientConn.SetReadDeadline(time.Time{})
-	s.bidirectionalCopy(clientConn, serverConn)
+	s.bidirectionalCopy(clientConn, br, serverConn)
 }
 
-func (s *Server) bidirectionalCopy(clientConn, serverConn net.Conn) {
+func (s *Server) bidirectionalCopy(clientConn net.Conn, clientReader io.Reader, serverConn net.Conn) {
 	errChan := make(chan error, 2)
 
 	for _, c := range []net.Conn{clientConn, serverConn} {
@@ -244,7 +235,7 @@ func (s *Server) bidirectionalCopy(clientConn, serverConn net.Conn) {
 	}
 
 	go func() {
-		_, err := io.Copy(serverConn, clientConn)
+		_, err := io.Copy(serverConn, clientReader)
 		errChan <- err
 	}()
 
